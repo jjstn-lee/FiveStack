@@ -15,6 +15,8 @@ RUN apt-get update && apt-get install -y \
 # install dependencies from requirements.txt (COPY will leverage dockerfile cache)
 COPY requirements.txt . 
 RUN pip install --no-cache-dir -r requirements.txt
+# temporary; just to make sure it'll work
+RUN python -c "import audioop; print('audioop is available')"
 
 # copy rest of the application code to the container; .venv is ignored
 COPY bot.py .
