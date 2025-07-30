@@ -1,0 +1,20 @@
+{
+  "timestamp": 1753830419.3305972,
+  "guild_id": 1380392740411412491,
+  "channel_id": 1399889821249573046,
+  "message_id": 1399890959424032950,
+  "creator_id": 191004951202234369,
+  "slots": [
+    {
+      "user_id": 191004951202234369,
+      "username": "beeann",
+      "time": null
+    },
+    null,
+    null,
+    null,
+    null
+  ],
+  "is_closed": false,
+  "created_at": 1753830413.229194
+}
