@@ -17,6 +17,8 @@ load_dotenv()
 app_id = os.getenv("APP_ID")
 discord_token = os.getenv("DISCORD_TOKEN")
 public_key = os.getenv("PUBLIC_KEY")
+# env = os.getenv("ENV")
+# dev_guild_id = os.getenv("DEV_GUILD_ID")
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
@@ -25,136 +27,23 @@ active_group = None
 
 group = discord.app_commands.Group(name="5man", description="Commands for 5man")
 
-# Session persistence file
-SESSION_FILE = "session_data.json"
-
-class SessionManager:
-    """Handles saving and loading session data"""
-    
-    @staticmethod
-    def save_session(view_data):
-        """Save session data to file"""
-        try:
-            data = {
-                "timestamp": time.time(),
-                "guild_id": view_data["guild_id"],
-                "channel_id": view_data["channel_id"],
-                "message_id": view_data["message_id"],
-                "creator_id": view_data["creator_id"],
-                "slots": view_data["slots"],
-                "is_closed": view_data["is_closed"],
-                "created_at": view_data["created_at"]
-            }
-            
-            with open(SESSION_FILE, 'w') as f:
-                json.dump(data, f, indent=2)
-            print(f"✅ Session saved at {datetime.now()}")
-            
-        except Exception as e:
-            print(f"❌ Error saving session: {e}")
-    
-    @staticmethod
-    def load_session():
-        """Load session data from file"""
-        try:
-            if not os.path.exists(SESSION_FILE):
-                return None
-                
-            with open(SESSION_FILE, 'r') as f:
-                data = json.load(f)
-            
-            # Check if session is too old (older than 1 hour)
-            session_age = time.time() - data["timestamp"]
-            if session_age > 3600:  # 1 hour
-                print("⏰ Session too old, ignoring")
-                SessionManager.clear_session()
-                return None
-            
-            print(f"✅ Session loaded from {datetime.fromtimestamp(data['timestamp'])}")
-            return data
-            
-        except Exception as e:
-            print(f"❌ Error loading session: {e}")
-            return None
-    
-    @staticmethod
-    def clear_session():
-        """Clear session file"""
-        try:
-            if os.path.exists(SESSION_FILE):
-                os.remove(SESSION_FILE)
-                print("🗑️ Session file cleared")
-        except Exception as e:
-            print(f"❌ Error clearing session: {e}")
-
 class FiveManView(discord.ui.View):
-    def __init__(self, creator_id: int, restore_data=None):
+    def __init__(self, creator_id: int):
         super().__init__(timeout=None)  # No timeout - we'll handle refreshing manually
         self.creator_id = creator_id
         self.original_message = None
         self.is_closed = False
-        self.created_at = restore_data.get("created_at", time.time()) if restore_data else time.time()
+        self.created_at = time.time()
         self.last_refresh = time.time()
         
-        # Restore slots if provided, otherwise initialize empty
-        if restore_data and restore_data.get("slots"):
-            self.slots = restore_data["slots"]
-            self.is_closed = restore_data.get("is_closed", False)
-        else:
-            self.slots = [None] * 5  # 5 slots, initially empty
+        self.slots = [None] * 5  # 5 slots, initially empty
 
         # Add buttons with custom_id for persistence
         self.add_item(SlotButton())
         self.add_item(ResetButton())
         self.add_item(LeaveButton())
         self.add_item(CloseGroupButton())
-
-    def save_state(self):
-        """Save current state to file"""
-        if self.original_message:
-            view_data = {
-                "guild_id": self.original_message.guild.id,
-                "channel_id": self.original_message.channel.id,
-                "message_id": self.original_message.id,
-                "creator_id": self.creator_id,
-                "slots": self.slots,
-                "is_closed": self.is_closed,
-                "created_at": self.created_at
-            }
-            SessionManager.save_session(view_data)
-
-    async def refresh_view(self):
-        """Refresh the view to prevent 15-minute timeout"""
-        try:
-            if self.is_closed or not self.original_message:
-                return
-            
-            # Check if it's been more than 14 minutes since last refresh
-            if time.time() - self.last_refresh > 840:  # 14 minutes
-                print("🔄 Refreshing view to prevent timeout...")
-                
-                # Create a new view with the same data
-                new_view = FiveManView(self.creator_id, {
-                    "slots": self.slots,
-                    "is_closed": self.is_closed,
-                    "created_at": self.created_at
-                })
-                new_view.original_message = self.original_message
-                new_view.last_refresh = time.time()
-                
-                # Update global reference
-                global active_group
-                active_group = new_view
-                
-                # Update the message with the new view
-                embed = new_view.update_embed()
-                await self.original_message.edit(embed=embed, view=new_view)
-                
-                print("✅ View refreshed successfully")
-                
-        except Exception as e:
-            print(f"❌ Error refreshing view: {e}")
-
+        
     def close_group(self):
         """Mark this group as closed and clear global reference"""
         global active_group
@@ -162,7 +51,6 @@ class FiveManView(discord.ui.View):
         if active_group == self:
             active_group = None
         # Clear session when group is closed
-        SessionManager.clear_session()
 
     def is_user_already_joined(self, user: discord.User):
         return any(slot and slot["user_id"] == user.id for slot in self.slots if slot)
@@ -239,10 +127,9 @@ class FiveManView(discord.ui.View):
         else:
             embed.set_footer(text="Click 'Join' button below to join!")
         
-        # Add session info
+        # Add session info (mostly used for debugging)
         session_age = time.time() - self.created_at
         session_minutes = int(session_age / 60)
-        embed.set_footer(text=f"Group active for {session_minutes} minutes | Auto-refreshes to stay active")
         
         return embed
 
@@ -259,6 +146,15 @@ class SlotButton(discord.ui.Button):
     async def callback(self, interaction: discord.Interaction):
         view: FiveManView = self.view
 
+        print(f"=== SLOT BUTTON CALLBACK DEBUG ===")
+        print(f"User: {interaction.user.id}")
+        print(f"Custom ID: {self.custom_id}")
+        print(f"View creator: {view.creator_id}")
+        print(f"View closed: {view.is_closed}")
+        print(f"Interaction token valid: {not interaction.is_expired()}")
+        print(f"Bot user: {interaction.client.user.id}")
+            
+        
         try:
             # Check if group is closed
             if view.is_closed:
@@ -302,36 +198,48 @@ class LeaveButton(discord.ui.Button):
 
     async def callback(self, interaction: discord.Interaction):
         view: FiveManView = self.view
-
+        print(f"=== LEAVE BUTTON CALLBACK DEBUG ===")
+        print(f"User: {interaction.user.id}")
+        print(f"Custom ID: {self.custom_id}")
+        print(f"View creator: {view.creator_id}")
+        print(f"View closed: {view.is_closed}")
+        print(f"Interaction token valid: {not interaction.is_expired()}")
+        print(f"Bot user: {interaction.client.user.id}")
+            
         try:
             # Check if group is closed
             if view.is_closed:
                 await interaction.response.send_message("❌ This group has been closed.", ephemeral=True)
                 return
             
-            user_slot = view.get_user_slot(interaction.user)
+            # Find user's slot
+            user_slot_index = None
+            for i, slot in enumerate(view.slots):
+                if slot and slot["user_id"] == interaction.user.id:
+                    user_slot_index = i
+                    break
             
-            if user_slot is None:
-                await interaction.response.send_message("❗ You're not in any slot.", ephemeral=True)
+            if user_slot_index is None:
+                await interaction.response.send_message("❌ You're not in this group.", ephemeral=True)
                 return
-
-            # Remove user from their slot
-            view.slots[user_slot] = None
             
-            # Update the embed and view
+            # Remove user from slot
+            view.slots[user_slot_index] = None
+            
+            # Update the embed and respond to the interaction (this is your one response)
             embed = view.update_embed()
-            await view.original_message.edit(embed=embed, view=view)
+            await interaction.response.edit_message(embed=embed, view=view)
             
-            # Save state after change
-            view.save_state()
-            
-            await interaction.response.send_message(f"✅ You left the group.", ephemeral=True)
+            # Send confirmation as a followup (not a response)
+            await interaction.followup.send("👋 You've left the group!", ephemeral=True)
             
         except Exception as e:
-            print(f"Error in LeaveButton callback: {e}")
+            print(f"❌ Exception in LeaveButton callback: {e}")
             if not interaction.response.is_done():
-                await interaction.response.send_message("❌ An error occurred. Please try again.", ephemeral=True)
-
+                try:
+                    await interaction.response.send_message("❌ An error occurred. Please try again.", ephemeral=True)
+                except Exception as e2:
+                    print(f"❌ Failed to send error response: {e2}")
 
 class ResetButton(discord.ui.Button):
     def __init__(self):
@@ -345,6 +253,14 @@ class ResetButton(discord.ui.Button):
     async def callback(self, interaction: discord.Interaction):
         view: FiveManView = self.view
 
+        print(f"=== RESET BUTTON CALLBACK DEBUG ===")
+        print(f"User: {interaction.user.id}")
+        print(f"Custom ID: {self.custom_id}")
+        print(f"View creator: {view.creator_id}")
+        print(f"View closed: {view.is_closed}")
+        print(f"Interaction token valid: {not interaction.is_expired()}")
+        print(f"Bot user: {interaction.client.user.id}")
+        
         try:
             # Check if group is closed
             if view.is_closed:
@@ -359,14 +275,12 @@ class ResetButton(discord.ui.Button):
             # Reset all slots
             view.slots = [None] * 5
             
-            # Update the embed and view
+            # Update the embed and respond to the interaction (this is your one response)
             embed = view.update_embed()
-            await view.original_message.edit(embed=embed, view=view)
+            await interaction.response.edit_message(embed=embed, view=view)
             
-            # Save state after change
-            view.save_state()
-            
-            await interaction.response.send_message("🔄 All slots have been reset!", ephemeral=True)
+            # Send confirmation as a followup (not a response)
+            await interaction.followup.send("🔄 All slots have been reset!", ephemeral=True)
             
         except Exception as e:
             print(f"Error in ResetButton callback: {e}")
@@ -386,6 +300,14 @@ class CloseGroupButton(discord.ui.Button):
     async def callback(self, interaction: discord.Interaction):
         view: FiveManView = self.view
         global active_group
+        
+        print(f"=== CLOSE GROUP BUTTON CALLBACK DEBUG ===")
+        print(f"User: {interaction.user.id}")
+        print(f"Custom ID: {self.custom_id}")
+        print(f"View creator: {view.creator_id}")
+        print(f"View closed: {view.is_closed}")
+        print(f"Interaction token valid: {not interaction.is_expired()}")
+        print(f"Bot user: {interaction.client.user.id}")
 
         try:
             # Check if group is already closed
@@ -412,8 +334,11 @@ class CloseGroupButton(discord.ui.Button):
                 color=discord.Color.red()
             )
             
-            await view.original_message.edit(embed=embed, view=view)
-            await interaction.response.send_message("🔒 Group has been closed. A new group can now be created.", ephemeral=True)
+            # Use interaction.response to edit the message (this is your one response)
+            await interaction.response.edit_message(embed=embed, view=view)
+            
+            # Send confirmation as a followup (not a response)
+            await interaction.followup.send("🔒 Group has been closed. A new group can now be created.", ephemeral=True)
             
         except Exception as e:
             print(f"Error in CloseGroupButton callback: {e}")
@@ -429,6 +354,20 @@ class TimeModal(discord.ui.Modal, title="Join Slot"):
         max_length=100
     )
 
+    role_select = discord.ui.Select(
+        placeholder="Select your preferred role (Optional)",
+        min_values=0,
+        max_values=1,
+        options=[
+            discord.SelectOption(label="Top", emoji="🗻"),
+            discord.SelectOption(label="Jungle", emoji="🌲"),
+            discord.SelectOption(label="Mid", emoji="🛡️"),
+            discord.SelectOption(label="ADC", emoji="🏹"),
+            discord.SelectOption(label="Support", emoji="💖"),
+        ]
+    )
+
+
     def __init__(self, user, view):
         super().__init__()
         self.user = user
@@ -440,59 +379,63 @@ class TimeModal(discord.ui.Modal, title="Join Slot"):
             available_slot_index = self.view_ref.get_first_available_slot()
 
             if available_slot_index is None:
-                await interaction.response.send_message("❌ No available slots found. The group might have just filled.", ephemeral=True)
+                await interaction.response.send_message(
+                    "❌ No available slots found. The group might have just filled.",
+                    ephemeral=True
+                )
                 return
 
             # Fill the slot with serializable data
             self.view_ref.slots[available_slot_index] = {
                 "user_id": self.user.id,
                 "username": self.user.display_name,
-                "time": self.time_input.value.strip() if self.time_input.value else None
+                "time": self.time_input.value.strip() if self.time_input.value else None,
+                "role": self.role_input.value.strip() if self.role_input.value else None
             }
 
-            # Update the embed
+            # Update the embed and respond
             embed = self.view_ref.update_embed()
-            await self.view_ref.original_message.edit(embed=embed, view=self.view_ref)
-            
-            # Save state after change
-            self.view_ref.save_state()
-            
-            # Send confirmation
-            time_msg = f" with availability: {self.time_input.value}" if self.time_input.value else ""
-            await interaction.response.send_message(f"✅ Joined the group{time_msg}!", ephemeral=True)
-            
+            details = []
+            if self.time_input.value:
+                details.append(f"availability: {self.time_input.value}")
+            if self.role_input.value:
+                details.append(f"role: {self.role_input.value}")
+            detail_msg = " with " + ", ".join(details) if details else ""
+
+            await interaction.response.edit_message(embed=embed, view=self.view_ref)
+
+            await interaction.followup.send(f"✅ Joined the group{detail_msg}!", ephemeral=True)
+
             # If group is now full, notify everyone
             if self.view_ref.is_full():
                 user_ids = [slot["user_id"] for slot in self.view_ref.slots if slot]
                 mentions = " ".join([f"<@{user_id}>" for user_id in user_ids])
-                
-                # Send a follow-up message to ping everyone
                 try:
                     await interaction.followup.send(
-                        f"🎉 **GROUP IS FULL!** {mentions}\nYour 5man is ready to go! Coordinate and have fun! 🎮",
+                        f"🎉 **GROUP IS FULL!** {mentions}\nYour 5-man is ready to go! Coordinate and have fun! 🎮",
                         ephemeral=False
                     )
-                except:
-                    # If followup fails, try to send in the channel
-                    pass
-            
+                except Exception as e:
+                    print(f"Failed to send full group notification: {e}")
+
         except Exception as e:
             print(f"Error in TimeModal on_submit: {e}")
             if not interaction.response.is_done():
                 await interaction.response.send_message("❌ An error occurred. Please try again.", ephemeral=True)
 
 
+
 # Background task to refresh views and prevent 15-minute timeout
-@tasks.loop(minutes=10)  # Check every 10 minutes
-async def refresh_active_views():
-    """Background task to refresh views before they timeout"""
-    global active_group
+# @tasks.loop(minutes=10)  # Check every 10 minutes
+# async def refresh_active_views():
+#     """Background task to refresh views before they timeout"""
+#     global active_group
     
-    if active_group and not active_group.is_closed:
-        await active_group.refresh_view()
+#     if active_group and not active_group.is_closed:
+#         await active_group.refresh_view()
 
 
-@group.command(name="start", description="Start a 5-man party finder")
+
 async def five_man_command(interaction: discord.Interaction):
     global active_group
     
@@ -509,6 +452,10 @@ async def five_man_command(interaction: discord.Interaction):
         # Create new group
         view = FiveManView(creator_id=interaction.user.id)
         active_group = view  # Set as the active group
+        
+        # ⭐ CRITICAL: Register the view instance with the bot
+        bot.add_view(view)
+        
         embed = view.update_embed()
 
         # Try to find the role
@@ -525,67 +472,17 @@ async def five_man_command(interaction: discord.Interaction):
         # Store the message reference for later editing
         view.original_message = await interaction.original_response()
         
-        # Save initial state
-        view.save_state()
+        # Save initial state (if you're keeping this for some reason)
         
         # Start the refresh task if it's not already running
-        if not refresh_active_views.is_running():
-            refresh_active_views.start()
+        # if not refresh_active_views.is_running():
+        #     refresh_active_views.start()
         
     except Exception as e:
         print(f"Error in 5man command: {e}")
         if not interaction.response.is_done():
             await interaction.response.send_message("❌ Failed to create 5 man. Please try again.", ephemeral=True)
             
-async def restore_session():
-    """Restore session from saved data on bot startup"""
-    global active_group
-    
-    session_data = SessionManager.load_session()
-    if not session_data:
-        return
-    
-    try:
-        # Get the guild and channel
-        guild = bot.get_guild(session_data["guild_id"])
-        if not guild:
-            print("❌ Guild not found, cannot restore session")
-            SessionManager.clear_session()
-            return
-        
-        channel = guild.get_channel(session_data["channel_id"])
-        if not channel:
-            print("❌ Channel not found, cannot restore session")
-            SessionManager.clear_session()
-            return
-        
-        # Try to get the original message
-        try:
-            message = await channel.fetch_message(session_data["message_id"])
-        except discord.NotFound:
-            print("❌ Original message not found, cannot restore session")
-            SessionManager.clear_session()
-            return
-        
-        # Create a new view with restored data
-        view = FiveManView(session_data["creator_id"], restore_data=session_data)
-        view.original_message = message
-        active_group = view
-        
-        # Update the message with the restored view
-        embed = view.update_embed()
-        await message.edit(embed=embed, view=view)
-        
-        # Start the refresh task
-        if not refresh_active_views.is_running():
-            refresh_active_views.start()
-        
-        print(f"✅ Session restored! Group has {sum(1 for slot in view.slots if slot)}/5 members")
-        
-    except Exception as e:
-        print(f"❌ Error restoring session: {e}")
-        SessionManager.clear_session()
-
 
 @group.command(name="session", description="Check current session status")
 async def session_status(interaction: discord.Interaction):
@@ -605,8 +502,8 @@ async def session_status(interaction: discord.Interaction):
             f"• Age: {session_minutes} minutes\n"
             f"• Last refresh: {last_refresh_age} minutes ago\n"
             f"• Creator: <@{active_group.creator_id}>\n"
-            f"• Closed: {'Yes' if active_group.is_closed else 'No'}\n"
-            f"• Refresh task running: {'Yes' if refresh_active_views.is_running() else 'No'}",
+            f"• Closed: {'Yes' if active_group.is_closed else 'No'}\n",
+            # f"• Refresh task running: {'Yes' if refresh_active_views.is_running() else 'No'}",
             ephemeral=True
         )
     else:
@@ -630,6 +527,69 @@ async def force_refresh(interaction: discord.Interaction):
 
 bot.tree.add_command(group)
 
+
+async def cleanup_old_messages():
+    """Delete any existing bot messages on startup"""
+    try:
+        import asyncio
+        deleted_total = 0
+        
+        print("🧹 Starting message cleanup...")
+        
+        # Loop through all guilds the bot is in
+        for guild in bot.guilds:
+            # Loop through all channels the bot can see
+            for channel in guild.text_channels:
+                # Check if bot has permission to read message history and delete messages
+                permissions = channel.permissions_for(guild.me)
+                if not (permissions.read_message_history and permissions.manage_messages):
+                    continue
+                
+                try:
+                    deleted_count = 0
+                    async for message in channel.history(limit=20):  # Reduced limit
+                        if message.author == bot.user:
+                            try:
+                                await message.delete()
+                                deleted_count += 1
+                                # Add delay between deletions to avoid rate limiting
+                                await asyncio.sleep(0.5)  # 500ms delay between deletions
+                            except discord.NotFound:
+                                # Message already deleted
+                                pass
+                            except discord.Forbidden:
+                                # Lost permissions mid-cleanup
+                                break
+                            except discord.HTTPException as e:
+                                if e.status == 429:  # Rate limited
+                                    print(f"⏳ Rate limited, waiting...")
+                                    await asyncio.sleep(2)  # Wait 2 seconds on rate limit
+                                    continue
+                                else:
+                                    raise
+                    
+                    if deleted_count > 0:
+                        print(f"🧹 Cleaned up {deleted_count} old bot message(s) from #{channel.name} in {guild.name}")
+                        deleted_total += deleted_count
+                    
+                    # Add delay between channels
+                    if deleted_count > 0:
+                        await asyncio.sleep(1)  # 1 second delay between channels that had deletions
+                        
+                except discord.Forbidden:
+                    # Don't have permission to read this channel
+                    continue
+                except Exception as e:
+                    print(f"❌ Error cleaning up #{channel.name} in {guild.name}: {e}")
+        
+        if deleted_total > 0:
+            print(f"🧹 Total cleanup: {deleted_total} message(s) deleted")
+        else:
+            print("✅ No old bot messages found to clean up")
+        
+    except Exception as e:
+        print(f"❌ Error during message cleanup: {e}")
+
 @bot.event
 async def on_message(message):
     # Ignore bot and system messages
@@ -643,14 +603,12 @@ async def on_message(message):
 
 @bot.event
 async def on_ready():
-    print(f"✅ Logged in as {bot.user}")
     try:
         synced = await bot.tree.sync()
         print(f"🔃 Synced {len(synced)} command(s)")
-        
-        # Restore session after bot is ready
-        await restore_session()
-        
+        await cleanup_old_messages()
+        bot.add_view(FiveManView(0))  # Dummy creator_id for registration only
+        print(f"✅ Logged in as {bot.user}")
     except Exception as e:
         print(f"❌ Error syncing commands: {e}")
 
