@@ -102,11 +102,12 @@ class FiveManView(discord.ui.View):
                 role_text = ""
                 if slot.get("role"):
                     role_emoji_ids = {
-                        "Top": "1403834217153957938",
-                        "Jungle": "1403834207461183580", 
-                        "Mid": "1403834214893228313",
-                        "ADC": "1403834219830055025",
-                        "Support": "1403834211210887208"
+                        "Top": "1403834039735025674",
+                        "Jungle": "1403834034957713691", 
+                        "Mid": "1403834037776154785",
+                        "ADC": "1403834041010098246",
+                        "Support": "1403834038694973521",
+                        "Fill": "1403834036866125884",
                     }
                     
                     role_emoji = ""
@@ -325,11 +326,12 @@ class RoleSelectView(discord.ui.View):
         min_values=1,
         max_values=1,
         options=[
-            discord.SelectOption(label="Top", emoji="<:top_lane:1403834217153957938>"),
-            discord.SelectOption(label="Jungle", emoji="<:jungle:1403834207461183580>"),
-            discord.SelectOption(label="Mid", emoji="<:mid_lane:1403834211210887208>"),
-            discord.SelectOption(label="ADC", emoji="<:bot_lane:1403834219830055025>"),
-            discord.SelectOption(label="Support", emoji="<:support:1403834214893228313>"),
+            discord.SelectOption(label="Top", emoji="<:top_lane:1403834039735025674>"),
+            discord.SelectOption(label="Jungle", emoji="<:jungle:1403834034957713691>"),
+            discord.SelectOption(label="Mid", emoji="<:mid_lane:1403834037776154785>"),
+            discord.SelectOption(label="ADC", emoji="<:bot_lane:1403834041010098246>"),
+            discord.SelectOption(label="Support", emoji="<:support:1403834038694973521>"),
+            discord.SelectOption(label="Fill", emoji="<:fill:1403834036866125884>"),
         ]
     )
     async def select_callback(self, interaction: discord.Interaction, select: discord.ui.Select):
@@ -421,30 +423,46 @@ async def five_man_command(interaction: discord.Interaction):
             )
             return
         
+        # acknowledge (discord requires you acknowledge an interaction within 3 secs)
+        await interaction.response.send_message("⏳ Creating your FiveStack group...", ephemeral=True)
+        
         # create new group with guild_id
         view = FiveManView(creator_id=interaction.user.id, guild_id=guild_id)
         set_guild_active_group(guild_id, view)  # Set as the active group for this guild
         
-        bot.add_view(view)
         
         embed = view.update_embed()
+        bot.add_view(view)
+        
         # if able to find role, ping people with that role
         role = discord.utils.get(interaction.guild.roles, name="league-of-legends")
         ping = role.mention if role else ""
         
-        await interaction.response.send_message(
+        # send FiveStack message as message (NOT INTERACTION! important for clean-up) to the channel
+        channel = interaction.channel
+        
+        fivestack_message = await channel.send(
             content=f"{ping} – New 5 man forming! 🎮",
             embed=embed,
             view=view
         )
         
-        # store message reference for later editing
-        view.original_message = await interaction.original_response()
+        # store the message reference
+        view.original_message = fivestack_message
+        
+        # update the ephemeral response to confirm success
+        await interaction.edit_original_response(content="✅ FiveStack created successfully!")
         
     except Exception as e:
         print(f"Error in 5stack command: {e}")
+        import traceback
+        traceback.print_exc()  # This will show the full error
+        
         if not interaction.response.is_done():
             await interaction.response.send_message("❌ Failed to create 5 man. Please try again.", ephemeral=True)
+        else:
+            # if already responded, use edit
+            await interaction.edit_original_response(content="❌ Failed to create 5 man. Please try again.")
 
 @group.command(name="session", description="Check current session status")
 async def session_status(interaction: discord.Interaction):
@@ -474,21 +492,6 @@ async def session_status(interaction: discord.Interaction):
             ephemeral=True
         )
 
-@group.command(name="force_refresh", description="Manually refresh the current group (debug)")
-async def force_refresh(interaction: discord.Interaction):
-    """Manual refresh command for debugging"""
-    guild_id = interaction.guild_id
-    current_active_group = get_guild_active_group(guild_id)
-    
-    if not current_active_group or current_active_group.is_closed:
-        await interaction.response.send_message("❌ No active group to refresh.", ephemeral=True)
-        return
-    
-    try:
-        await interaction.response.send_message("✅ Group view refreshed manually!", ephemeral=True)
-    except Exception as e:
-        await interaction.response.send_message(f"❌ Error refreshing: {e}", ephemeral=True)
-
 # @group.command(name="debug_all_sessions", description="Show all active sessions across all guilds (debug)")
 # async def debug_all_sessions(interaction: discord.Interaction):
 #     """Debug command to show all active sessions"""
@@ -515,7 +518,7 @@ async def force_refresh(interaction: discord.Interaction):
 @group.command(name="cleanup", description="Delete all old FiveStack messages (requires read and manage messages permissions)")
 async def cleanup_command(interaction: discord.Interaction):
     """Manual cleanup command for slash command interface"""
-    await interaction.response.defer(ephemeral=True)  # Defer the response since this might take a while
+    await interaction.response.defer(ephemeral=True)  # defer response because it might take a long time    
     try:
         import asyncio
         deleted_total = 0
@@ -526,26 +529,23 @@ async def cleanup_command(interaction: discord.Interaction):
             permissions = channel.permissions_for(guild.me)
             if not (permissions.read_message_history and permissions.manage_messages):
                 continue
-            
             try:
                 deleted_count = 0
-                async for message in channel.history(limit=20):  # Reduced limit
+                async for message in channel.history(limit=20): 
                     if message.author == bot.user:
                         try:
                             await message.delete()
                             deleted_count += 1
                             # add delay between deletions to avoid rate limiting
                             await asyncio.sleep(0.5)  # 500ms delay between deletions
-                        except discord.NotFound:
-                            # Message already deleted
+                        except discord.NotFound: # message already deleted
                             pass
-                        except discord.Forbidden:
-                            # Lost permissions mid-cleanup
+                        except discord.Forbidden: # lost permissions mid-cleanup
                             break
                         except discord.HTTPException as e:
-                            if e.status == 429:  # Rate limited
+                            if e.status == 429:  # rate limited
                                 print(f"⏳ Rate limited, waiting...")
-                                await asyncio.sleep(2)  # Wait 2 seconds on rate limit
+                                await asyncio.sleep(2)  # wait 2 seconds on rate limit
                                 continue
                             else:
                                 raise
@@ -581,9 +581,10 @@ async def on_message(message):
         return
     # if message starts with slash, it's likely not a valid user message anyway
     if not message.content.startswith("/"):
-        await message.delete()
-    else:
-        print(f"message valid: {message}")
+        try:
+            await message.delete()
+        except Exception as e: # no permission to delete, not a big deal
+            pass
 
 @bot.event
 async def on_ready():
