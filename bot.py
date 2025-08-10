@@ -380,16 +380,20 @@ class TimeModal(discord.ui.Modal, title="Join Slot"):
                 details.append(f"role: {self.selected_role}")
             detail_msg = " with " + ", ".join(details) if details else ""
             
-            await interaction.response.edit_message(embed=embed, view=self.view_ref)
-            await interaction.followup.send(f"✅ Joined the group{detail_msg}!", ephemeral=True)
+            await interaction.response.send_message(f"✅ Joined the group{detail_msg}!", ephemeral=True)
+            
+            # edit ORIGINAL message, NOT the interaction; that will cause the ephemeral to have the updated view
+            if hasattr(self.view_ref, 'original_message') and self.view_ref.original_message:
+                await self.view_ref.original_message.edit(embed=embed, view=self.view_ref)
             
             if self.view_ref.is_full():
                 user_ids = [slot["user_id"] for slot in self.view_ref.slots if slot]
                 mentions = " ".join([f"<@{user_id}>" for user_id in user_ids])
-                await interaction.followup.send(
-                    f"🎉 **GROUP IS FULL!** {mentions}\nYour 5-man is ready to go! Coordinate and have fun! 🎮",
-                    ephemeral=False
+                # send the "group full" message to the channel (not ephemeral)
+                await self.view_ref.original_message.channel.send(
+                    f"🎉 **GROUP IS FULL!** {mentions}\nYour 5-man is ready to go! Coordinate and have fun! 🎮"
                 )
+                
         except Exception as e:
             print(f"Error in TimeModal on_submit: {e}")
             if not interaction.response.is_done():
@@ -413,6 +417,8 @@ async def five_man_command(interaction: discord.Interaction):
     guild_id = interaction.guild_id
     
     try:
+        # DEBUG
+
         # check if there's already an active group in this guild
         current_active_group = get_guild_active_group(guild_id)
         if current_active_group and not current_active_group.is_closed:
@@ -430,8 +436,18 @@ async def five_man_command(interaction: discord.Interaction):
         view = FiveManView(creator_id=interaction.user.id, guild_id=guild_id)
         set_guild_active_group(guild_id, view)  # Set as the active group for this guild
         
-        
         embed = view.update_embed()
+        
+        # Debug prints
+        print(f"=== DEBUG FIVESTACK CREATION ===")
+        print(f"View created: {view}")
+        print(f"Embed created: {embed}")
+        print(f"Embed title: {embed.title if embed else 'No embed'}")
+        print(f"View children: {len(view.children) if hasattr(view, 'children') else 'No children attr'}")
+        if hasattr(view, 'children'):
+            for i, child in enumerate(view.children):
+                print(f"  Child {i}: {type(child).__name__} - {getattr(child, 'label', 'No label')}")
+        
         bot.add_view(view)
         
         # if able to find role, ping people with that role
@@ -441,11 +457,19 @@ async def five_man_command(interaction: discord.Interaction):
         # send FiveStack message as message (NOT INTERACTION! important for clean-up) to the channel
         channel = interaction.channel
         
+        # More debug info before sending
+        print(f"About to send message to channel: {channel}")
+        print(f"Content: {ping} – New FiveStack group forming! 🎮")
+        print(f"Embed is None: {embed is None}")
+        print(f"View is None: {view is None}")
+        
         fivestack_message = await channel.send(
-            content=f"{ping} – New 5 man forming! 🎮",
+            content=f"{ping} – New FiveStack group forming! 🎮",
             embed=embed,
             view=view
         )
+        
+        print(f"Message sent successfully: {fivestack_message.id}")
         
         # store the message reference
         view.original_message = fivestack_message
