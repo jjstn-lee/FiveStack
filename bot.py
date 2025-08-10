@@ -538,6 +538,65 @@ async def session_status(interaction: discord.Interaction):
 #     await interaction.response.send_message("\n".join(message_parts), ephemeral=True)
 
 
+@group.command(name="reset", description="Reset the bot for this guild (clears active FiveStack group)")
+async def reset_guild_command(interaction: discord.Interaction):
+    guild_id = interaction.guild_id
+    
+    try:
+        # check if there's an active group
+        if guild_id not in active_groups:
+            await interaction.response.send_message(
+                "ℹ️ No active FiveStack group found for this guild. Nothing to reset.",
+                ephemeral=True
+            )
+            return
+        
+        current_group = active_groups[guild_id]
+        
+        if hasattr(current_group, 'is_closed'):
+            current_group.is_closed = True
+        
+        # stop view to prevent further interactions
+        if hasattr(current_group, 'stop'):
+            current_group.stop()
+        
+        # disable the original message's view (if message reference exists)
+        if hasattr(current_group, 'original_message') and current_group.original_message:
+            try:
+                await current_group.original_message.edit(
+                    content=f"{current_group.original_message.content}\n\n❌ **This FiveStack has been reset by an administrator.**",
+                    view=None  # Remove the view entirely
+                )
+            except discord.NotFound: # message was deleted, OK
+                pass
+            except discord.Forbidden: # bot doesn't have permission to edit, OK
+                pass
+        
+        # remove from active groups
+        del active_groups[guild_id]
+        await interaction.response.send_message(
+            f"✅ **Guild FiveStack reset successfully!**\n"
+            f"The active group has been cleared and you can now create a new FiveStack.",
+            ephemeral=True
+        )
+        print(f"Guild {guild_id} FiveStack reset by user {interaction.user.id} ({interaction.user.display_name})")
+        
+    except KeyError:
+        # don't think this will ever happen but just in case?
+        await interaction.response.send_message(
+            "ℹ️ No active FiveStack group found for this guild.",
+            ephemeral=True
+        )
+    except Exception as e:
+        print(f"Error in reset command: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        if not interaction.response.is_done():
+            await interaction.response.send_message(
+                "❌ An error occurred while resetting the guild. Please try again.",
+                ephemeral=True
+            )
 
 @group.command(name="cleanup", description="Delete all old FiveStack messages (requires read and manage messages permissions)")
 async def cleanup_command(interaction: discord.Interaction):
