@@ -7,6 +7,8 @@ import time
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
+# random comment
+
 intents = discord.Intents.default()
 intents.message_content = False
 intents.guilds = True
