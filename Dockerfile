@@ -18,7 +18,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # copy rest of the application code to the container; .venv is ignored
 COPY bot.py .
-COPY .env .
 COPY session_data.json .
 
 # Command to run your bot
