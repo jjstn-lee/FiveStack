@@ -20,7 +20,7 @@ discord_token = os.getenv("DISCORD_TOKEN")
 public_key = os.getenv("PUBLIC_KEY")
 
 bot = commands.Bot(command_prefix="!", intents=intents)
-# ..
+# ...
 # dictionary to track active groups per guild
 active_groups = {}  # guild_id hashes to the appropriate FiveManView
 
