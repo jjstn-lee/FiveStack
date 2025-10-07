@@ -1,81 +1,78 @@
 {
-    "taskDefinition": {
-        "taskDefinitionArn": "arn:aws:ecs:us-east-2:843942050958:task-definition/discord-bot-tasks:3",
-        "containerDefinitions": [
-            {
-                "name": "5man-bot",
-                "image": "843942050958.dkr.ecr.us-east-2.amazonaws.com/discord-bots/5man-bot:latest",
-                "cpu": 0,
-                "portMappings": [],
-                "essential": true,
-                "environment": [],
-                "mountPoints": [],
-                "volumesFrom": [],
-                "logConfiguration": {
-                    "logDriver": "awslogs",
-                    "options": {
-                        "awslogs-group": "/ecs/discord-bot-tasks",
-                        "awslogs-create-group": "true",
-                        "awslogs-region": "us-east-2",
-                        "awslogs-stream-prefix": "ecs"
-                    }
-                },
-                "systemControls": []
-            }
-        ],
-        "family": "discord-bot-tasks",
-        "taskRoleArn": "arn:aws:iam::843942050958:role/ecsTaskExecutionRole",
-        "executionRoleArn": "arn:aws:iam::843942050958:role/ecsTaskExecutionRole",
-        "networkMode": "awsvpc",
-        "revision": 3,
-        "volumes": [],
-        "status": "ACTIVE",
-        "requiresAttributes": [
-            {
-                "name": "com.amazonaws.ecs.capability.logging-driver.awslogs"
+    "taskDefinitionArn": "arn:aws:ecs:us-east-2:843942050958:task-definition/discord-bot-tasks:3",
+    "containerDefinitions": [
+        {
+            "name": "5man-bot",
+            "image": "843942050958.dkr.ecr.us-east-2.amazonaws.com/discord-bots/5man-bot:latest",
+            "cpu": 0,
+            "portMappings": [],
+            "essential": true,
+            "environment": [],
+            "mountPoints": [],
+            "volumesFrom": [],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "/ecs/discord-bot-tasks",
+                    "awslogs-create-group": "true",
+                    "awslogs-region": "us-east-2",
+                    "awslogs-stream-prefix": "ecs"
+                }
             },
-            {
-                "name": "ecs.capability.execution-role-awslogs"
-            },
-            {
-                "name": "com.amazonaws.ecs.capability.ecr-auth"
-            },
-            {
-                "name": "com.amazonaws.ecs.capability.docker-remote-api.1.19"
-            },
-            {
-                "name": "com.amazonaws.ecs.capability.task-iam-role"
-            },
-            {
-                "name": "ecs.capability.execution-role-ecr-pull"
-            },
-            {
-                "name": "com.amazonaws.ecs.capability.docker-remote-api.1.18"
-            },
-            {
-                "name": "ecs.capability.task-eni"
-            },
-            {
-                "name": "com.amazonaws.ecs.capability.docker-remote-api.1.29"
-            }
-        ],
-        "placementConstraints": [],
-        "compatibilities": [
-            "EC2",
-            "FARGATE"
-        ],
-        "runtimePlatform": {
-            "cpuArchitecture": "X86_64",
-            "operatingSystemFamily": "LINUX"
+            "systemControls": []
+        }
+    ],
+    "family": "discord-bot-tasks",
+    "taskRoleArn": "arn:aws:iam::843942050958:role/ecsTaskExecutionRole",
+    "executionRoleArn": "arn:aws:iam::843942050958:role/ecsTaskExecutionRole",
+    "networkMode": "awsvpc",
+    "revision": 3,
+    "volumes": [],
+    "status": "ACTIVE",
+    "requiresAttributes": [
+        {
+            "name": "com.amazonaws.ecs.capability.logging-driver.awslogs"
         },
-        "requiresCompatibilities": [
-            "FARGATE"
-        ],
-        "cpu": "256",
-        "memory": "512",
-        "registeredAt": "2025-09-07T18:13:42.656000-04:00",
-        "registeredBy": "arn:aws:iam::843942050958:root",
-        "enableFaultInjection": false
+        {
+            "name": "ecs.capability.execution-role-awslogs"
+        },
+        {
+            "name": "com.amazonaws.ecs.capability.ecr-auth"
+        },
+        {
+            "name": "com.amazonaws.ecs.capability.docker-remote-api.1.19"
+        },
+        {
+            "name": "com.amazonaws.ecs.capability.task-iam-role"
+        },
+        {
+            "name": "ecs.capability.execution-role-ecr-pull"
+        },
+        {
+            "name": "com.amazonaws.ecs.capability.docker-remote-api.1.18"
+        },
+        {
+            "name": "ecs.capability.task-eni"
+        },
+        {
+            "name": "com.amazonaws.ecs.capability.docker-remote-api.1.29"
+        }
+    ],
+    "placementConstraints": [],
+    "compatibilities": [
+        "EC2",
+        "FARGATE"
+    ],
+    "runtimePlatform": {
+        "cpuArchitecture": "X86_64",
+        "operatingSystemFamily": "LINUX"
     },
-    "tags": []
+    "requiresCompatibilities": [
+        "FARGATE"
+    ],
+    "cpu": "256",
+    "memory": "512",
+    "registeredAt": "2025-09-07T18:13:42.656000-04:00",
+    "registeredBy": "arn:aws:iam::843942050958:root",
+    "enableFaultInjection": false
 }
