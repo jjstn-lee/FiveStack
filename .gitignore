@@ -1,6 +1,5 @@
 .venv
 .venv311
 .env
-.github
 
 *.json
