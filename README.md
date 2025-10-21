@@ -63,4 +63,4 @@ Note that a Dockerfile and GitHub Action workflow is also included. Tweaking the
 3. Implementation for multiple games other than League of Legends.
 4. Utilize 'dateparser' from Python to allow for natural language time inputs.
 5. When creating a group, allow people to also sign up for others.
-6. "On the bench" feature to let people fill in
+6. "On the bench" feature to let people fill just in case of no-shows.
