@@ -64,3 +64,6 @@ Note that a Dockerfile and GitHub Action workflow is also included. Tweaking the
 4. Utilize 'dateparser' from Python to allow for natural language time inputs.
 5. When creating a group, allow people to also sign up for others.
 6. "On the bench" feature to let people fill just in case of no-shows.
+
+## Known Bugs
+1. Sessions sometimes appear active but are not. Most likely an issue with 5-stack session expiration or UI view expiration. 
