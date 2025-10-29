@@ -2,4 +2,8 @@
 .venv311
 .env
 
+# for python cache
+__pycache__/
+*.pyc
+
 *.json
