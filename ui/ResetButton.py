@@ -2,6 +2,8 @@
 
 import discord
 
+from models import FiveManView
+
 
 class ResetButton(discord.ui.Button):
     def __init__(self):

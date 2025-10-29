@@ -1,3 +1,7 @@
+import discord
+
+from models import FiveManView
+
 
 class LeaveButton(discord.ui.Button):
     def __init__(self):

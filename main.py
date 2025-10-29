@@ -6,8 +6,9 @@ import json
 import time
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
+from bot import FiveStack, set_bot
 
-from bot import FiveStack
+from bot.FiveStack import FiveStack
 from config import *
 
 import bot
@@ -66,14 +67,24 @@ import config
 
 
 async def main():
+    print("🚀 Starting bot initialization...")
     # Load all Cogs
-    bot = FiveStack()
+    fiveStack = FiveStack()
+    set_bot(fiveStack)
+    bot = fiveStack.bot
+    print("✅ FiveStack instance created")
+    
 
     # Optionally add your FiveStack Cog directly if not in ./cogs
     # await bot.add_cog(FiveStack(bot))
 
     # Run the bot
-    await bot.start(DISCORD_TOKEN)
+    print("🔄 Loading cogs...")
+    await fiveStack.load_cogs()
+    print("✅ Successfully loaded cogs")
+    print("🔗 Starting bot connection...")
+    await bot.start(DISCORD_TOKEN)  # ✅ async-friendly
+    print("🔗 Began bot!")
 
 
 if __name__ == "__main__":

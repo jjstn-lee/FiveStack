@@ -3,10 +3,12 @@ import time
 import discord
 
 import bot
-from ui import SlotButton
-from ui import ResetButton
-from ui import LeaveButton
-from ui import CloseButton
+from ui.SlotButton import SlotButton
+from ui.ResetButton import ResetButton
+from ui.LeaveButton import LeaveButton
+from ui.CloseButton import CloseButton
+
+from bot.instance import get_bot
 
 
 class FiveManView(discord.ui.View):
@@ -97,7 +99,8 @@ class FiveManView(discord.ui.View):
                     role_emoji = ""
                     emoji_name = role_emoji_ids.get(slot["role"])
                     if emoji_name:
-                        guild = bot.get_guild(self.guild_id)
+                        instance = get_bot()
+                        guild = instance.bot.get_guild(self.guild_id)
                         if guild:
                             emoji = discord.utils.get(guild.emojis, name=emoji_name)
                             if emoji:

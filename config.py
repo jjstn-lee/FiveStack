@@ -4,16 +4,17 @@ from dotenv import load_dotenv
 
 # handle .env file
 load_dotenv()
-app_id = os.getenv("APP_ID")
-discord_token = os.getenv("DISCORD_TOKEN")
-public_key = os.getenv("PUBLIC_KEY")
 
 # determine which environment to use
-ENVIRONMENT = os.getenv("BOT_ENV", "dev").lower()  # default to 'dev'
+BOT_ENV = os.getenv("BOT_ENV", "dev").lower()  # default to 'dev'
 
-if ENVIRONMENT == "prod":
+if BOT_ENV == "prod":
+    APP_ID = os.getenv("PROD_APP_ID")
+    PUBLIC_KEY = os.getenv("PROD_PUBLIC_KEY")
     DISCORD_TOKEN = os.getenv("PROD_DISCORD_TOKEN")
 else:
+    APP_ID = os.getenv("DEV_APP_ID")
+    PUBLIC_KEY = os.getenv("DEV_PUBLIC_KEY")
     DISCORD_TOKEN = os.getenv("DEV_DISCORD_TOKEN")
 
 # Bot intents configuration

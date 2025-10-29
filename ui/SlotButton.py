@@ -2,6 +2,7 @@
 import discord
 
 from models import FiveManView
+from ui.RoleSelect import RoleSelect
 
 
 class SlotButton(discord.ui.Button):
@@ -40,7 +41,7 @@ class SlotButton(discord.ui.Button):
                 return
             
             # RoleSelectView first, then open TimeModal to avoid answering same interaction twice
-            role_select_view = RoleSelectView(user=interaction.user, parent_view=view)
+            role_select_view = RoleSelect(user=interaction.user, parent_view=view)
             await interaction.response.send_message(
                 "Please select your League of Legends role first:",
                 view=role_select_view,

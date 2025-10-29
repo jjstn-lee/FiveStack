@@ -2,6 +2,8 @@
 
 import discord
 
+from ui.TimeModal import TimeModal
+
 
 class RoleSelect(discord.ui.View):
     def __init__(self, user, parent_view):
